@@ -28,10 +28,24 @@ struct Args {
     /// also control the power LED in the fingerprint module
     #[argh(switch)]
     power: bool,
+
+    /// reduce brightness to 1% instead of 0% on timeout
+    #[argh(switch)]
+    twilight: bool,
 }
 
-// Disable this braindead advise
-#[allow(unused_parens)]
+fn low_bright(curr_bright: u8, twilight_mode: bool) -> u8 {
+    return if twilight_mode {
+        if curr_bright == 0 {
+            0
+        } else {
+            1
+        }
+    } else {
+        0
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let mut brightness: u8;
     let mut new_bright: u8;
@@ -48,9 +62,7 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     let args: Args = argh::from_env();
-    log::debug!("args={:?}", args);
-
-    log::info!("234");
+    log::info!("args={:?}", args);
 
     let ec = EmbeddedController::open()?;
 
@@ -102,7 +114,7 @@ fn main() -> anyhow::Result<()> {
         // to. Since we don't support hotplug, listening on USB devices wouldn't work reliably.
         match device.name() {
             Some("PIXA3854:00 093A:0274 Touchpad" | "AT Translated Set 2 keyboard") => {
-                if (!args.react_to_touchpad && device.name() == Option::from("PIXA3854:00 093A:0274 Touchpad")) {
+                if !args.react_to_touchpad && device.name() == Option::from("PIXA3854:00 093A:0274 Touchpad") {
                     log::debug!("Ignoring touchpad inputs!");
                     continue;
                 }
@@ -130,8 +142,8 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    log::info!("idle timeout: {} seconds", args.timeout);
-    log::info!("current brightness level: {}%", brightness);
+    log::debug!("idle timeout: {} seconds", args.timeout);
+    log::debug!("current brightness level: {}%", brightness);
 
     let mut state = None;
     loop {
@@ -152,11 +164,11 @@ fn main() -> anyhow::Result<()> {
             } else {
                 // Fade out
                 new_bright = ec.command(GetKeyboardBacklight)?.percent;
-                if (new_bright != brightness) {
+                if new_bright != brightness {
                     log::debug!("new brightness level: was: {}%, is now:{}%", brightness, new_bright);
                     brightness = new_bright;
                 }
-                fade_to(0)?;
+                fade_to(low_bright(brightness, args.twilight))?;
             }
             state = Some(new_state);
         }
