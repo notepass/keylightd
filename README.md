@@ -10,6 +10,17 @@
 
 [Framework]: https://frame.work/
 
+## Changes to original repo
+This version will fetch the current backlight brightness of the keyboard and restore to it instead of a preset
+value. Additionally, the touchpad inputs can now be ignored, so that the backlight only comes on when using the
+keyboard.
+
+## Requirements
+For Intel based (11/12/13 gen) Framework laptops this should work with most
+currently supported kernels. For AMD Ryzen based devices, Kernel 6.10 is needed
+or you need to apply [a kernel patch](https://lore.kernel.org/chrome-platform/20231005160701.19987-1-dustin@howett.net/#t)
+to whichever Kernel you are running.
+
 ## Installation
 
 To install from source, clone the repository and run:
@@ -42,7 +53,9 @@ Usage: keylightd [--brightness <brightness>] [--timeout <timeout>] [--power]
 keylightd - automatic keyboard backlight daemon for Framework laptops
 
 Options:
-  --brightness      brightness level when active (0-100) [default=30]
+    --react-to-touchpad
+                    also listen to touchpad events to enable/disable backlight 
+                    [default=true]
   --timeout         activity timeout in seconds [default=10]
   --power           also control the power LED in the fingerprint module
   --help            display usage information

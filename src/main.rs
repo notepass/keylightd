@@ -17,9 +17,9 @@ mod ec;
 /// keylightd - automatic keyboard backlight daemon for Framework laptops
 #[derive(Debug, FromArgs)]
 struct Args {
-    /// brightness level when active (0-100) [default=30]
-    #[argh(option, default = "30", from_str_fn(parse_brightness))]
-    brightness: u8,
+    /// also listen to touchpad events to enable/disable backlight  [default=true]
+    #[argh(option, default = "true")]
+    react_to_touchpad: bool,
 
     /// activity timeout in seconds [default=10]
     #[argh(option, default = "10")]
@@ -30,15 +30,12 @@ struct Args {
     power: bool,
 }
 
-fn parse_brightness(s: &str) -> Result<u8, String> {
-    let brightness = s.parse::<u8>().map_err(|e| e.to_string())?;
-    if brightness > 100 {
-        return Err("invalid brightness value {brightness} (valid range: 0-100)".into());
-    }
-    Ok(brightness)
-}
-
+// Disable this braindead advise
+#[allow(unused_parens)]
 fn main() -> anyhow::Result<()> {
+    let mut brightness: u8;
+    let mut new_bright: u8;
+
     env_logger::builder()
         .filter_module(
             env!("CARGO_PKG_NAME"),
@@ -53,7 +50,12 @@ fn main() -> anyhow::Result<()> {
     let args: Args = argh::from_env();
     log::debug!("args={:?}", args);
 
+    log::info!("234");
+
     let ec = EmbeddedController::open()?;
+
+    brightness = ec.command(GetKeyboardBacklight)?.percent;
+
     let fade_to = |target: u8| -> io::Result<()> {
         let resp = ec.command(GetKeyboardBacklight)?;
         let mut cur = if resp.enabled != 0 { resp.percent } else { 0 };
@@ -100,6 +102,10 @@ fn main() -> anyhow::Result<()> {
         // to. Since we don't support hotplug, listening on USB devices wouldn't work reliably.
         match device.name() {
             Some("PIXA3854:00 093A:0274 Touchpad" | "AT Translated Set 2 keyboard") => {
+                if (!args.react_to_touchpad && device.name() == Option::from("PIXA3854:00 093A:0274 Touchpad")) {
+                    log::debug!("Ignoring touchpad inputs!");
+                    continue;
+                }
                 let act = act.clone();
                 thread::spawn(move || -> io::Result<()> {
                     let name = device.name();
@@ -125,13 +131,13 @@ fn main() -> anyhow::Result<()> {
     }
 
     log::info!("idle timeout: {} seconds", args.timeout);
-    log::info!("brightness level: {}%", args.brightness);
+    log::info!("current brightness level: {}%", brightness);
 
     let mut state = None;
     loop {
         let guard = act.last_activity.lock().unwrap();
         let last = *guard;
-        let (_, result) = act
+        let (_lock, result) = act
             .condvar
             .wait_timeout_while(guard, Duration::from_secs(args.timeout.into()), |instant| {
                 *instant == last
@@ -139,12 +145,17 @@ fn main() -> anyhow::Result<()> {
             .unwrap();
         let new_state = !result.timed_out();
         if state != Some(new_state) {
-            log::info!("activity state changed: {state:?} -> {new_state}");
+            log::debug!("activity state changed: {state:?} -> {new_state}");
             if new_state {
                 // Fade in
-                fade_to(args.brightness)?;
+                fade_to(brightness)?;
             } else {
                 // Fade out
+                new_bright = ec.command(GetKeyboardBacklight)?.percent;
+                if (new_bright != brightness) {
+                    log::debug!("new brightness level: was: {}%, is now:{}%", brightness, new_bright);
+                    brightness = new_bright;
+                }
                 fade_to(0)?;
             }
             state = Some(new_state);
