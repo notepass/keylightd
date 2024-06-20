@@ -1,11 +1,6 @@
-<div align="center">
-
 # `keylightd`
 
 ### Keyboard backlight daemon for Framework laptops
-
-</div>
-
 `keylightd` is a small system daemon for [Framework] laptops that listens to keyboard and touchpad input, and turns on the keyboard backlight while either is being used.
 
 [Framework]: https://frame.work/
@@ -53,11 +48,12 @@ Usage: keylightd [--brightness <brightness>] [--timeout <timeout>] [--power]
 keylightd - automatic keyboard backlight daemon for Framework laptops
 
 Options:
-    --react-to-touchpad
+  --react-to-touchpad
                     also listen to touchpad events to enable/disable backlight 
                     [default=true]
   --timeout         activity timeout in seconds [default=10]
   --power           also control the power LED in the fingerprint module
+  --twilight        reduce brightness to 1% instead of 0% on timeout
   --help            display usage information
 ```
 
