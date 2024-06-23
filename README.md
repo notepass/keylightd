@@ -6,9 +6,10 @@
 [Framework]: https://frame.work/
 
 ## Changes to original repo
-This version will fetch the current backlight brightness of the keyboard and restore to it instead of a preset
-value. Additionally, the touchpad inputs can now be ignored, so that the backlight only comes on when using the
-keyboard.
+- Fetch the current backlight brightness of the keyboard and restore to it instead of a preset
+value
+- touchpad inputs can now be ignored, so that the backlight only comes on when using the keyboard
+- A twilight mode can be enabled that sets the "off" brightness to 1 instead of 0
 
 ## Requirements
 For Intel based (11/12/13 gen) Framework laptops this should work with most
