@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
 
     brightness = ec.command(GetKeyboardBacklight)?.percent;
 
-    let fade_to = |target: u8| -> io::Result<()> {
+    let fade_to = |target: u8, disable_power_led: bool| -> io::Result<()> {
         let resp = ec.command(GetKeyboardBacklight)?;
         let mut cur = if resp.enabled != 0 { resp.percent } else { 0 };
         while cur != target {
@@ -82,13 +82,13 @@ fn main() -> anyhow::Result<()> {
                 // The power LED cannot be faded from software (although the beta BIOS apparently
                 // has a switch for dimming it, so maybe it'll work with the next BIOS update).
                 // So instead, we treat 0 as off and set it back to auto for any non-zero value.
-                if cur == 0 {
+                if disable_power_led {
                     ec.command(LedControl {
                         led_id: LedId::POWER,
                         flags: LedFlags::NONE,
                         brightness: LedBrightnesses::default(),
                     })?;
-                } else if cur == 1 {
+                } else {
                     ec.command(LedControl {
                         led_id: LedId::POWER,
                         flags: LedFlags::AUTO,
@@ -160,7 +160,7 @@ fn main() -> anyhow::Result<()> {
             log::debug!("activity state changed: {state:?} -> {new_state}");
             if new_state {
                 // Fade in
-                fade_to(brightness)?;
+                fade_to(brightness, false)?;
             } else {
                 // Fade out
                 new_bright = ec.command(GetKeyboardBacklight)?.percent;
@@ -168,7 +168,7 @@ fn main() -> anyhow::Result<()> {
                     log::debug!("new brightness level: was: {}%, is now:{}%", brightness, new_bright);
                     brightness = new_bright;
                 }
-                fade_to(low_bright(brightness, args.twilight))?;
+                fade_to(low_bright(brightness, args.twilight), true)?;
             }
             state = Some(new_state);
         }
